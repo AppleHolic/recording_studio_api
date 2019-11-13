@@ -1,8 +1,8 @@
 import fire
 import logging
 from io import BytesIO
-from flask import Flask, make_response
-from flask_restplus import Api, Resource, fields, abort
+from flask import Flask
+from flask_restplus import Api, Resource, abort
 
 #
 # default app setup
@@ -10,7 +10,6 @@ from flask_restplus import Api, Resource, fields, abort
 from file_interface import FileInterface
 from settings import MASTER_DIR
 from utils import make_json_error, get_logger
-
 
 APP = None
 API = None
@@ -43,33 +42,63 @@ RecordParams = API.parser()
 RecordParams.add_argument('key', type=str, required=True)
 RecordParams.add_argument('file', type=str, required=True)
 
-RecordInfo = API.model('RecordInfo', {
-    'key': fields.String(required=True),
-    'audio': fields.Raw(),
-    'recorded': fields.Raw()
-})
 
-
-@record.route('')
+@record.route('/list/<string:list_type>')
 class RecordList(Resource):
-    pass
+
+    def get(self, list_type):
+        global FILE_INTERFACE
+        try:
+            info_list = list(FILE_INTERFACE.get_type_list(list_type))
+            return {'info': info_list}, 200
+        except (KeyError, FileNotFoundError) as e:
+            logger.error(str(e))
+            abort(make_json_error(400, str(e)))
+        except Exception as e:
+            logger.error(str(e))
+            abort(make_json_error(500, str(e)))
 
 
-@record.route('/<string:key>')
-class RecordRead(Resource):
+@record.route('/page/<string:list_type>/<int:page>')
+class RecordPage(Resource):
 
-    def get(self):
-        pass
+    def get(self, list_type, page):
+        global FILE_INTERFACE
+        try:
+            info_list = list(FILE_INTERFACE.get_page(page, list_type))
+            return {'info': info_list}, 200
+        except (KeyError, FileNotFoundError) as e:
+            logger.error(str(e))
+            abort(make_json_error(400, str(e)))
+        except Exception as e:
+            logger.error(str(e))
+            abort(make_json_error(500, str(e)))
+
+
+@record.route('/item/<string:key>')
+class RecordItem(Resource):
+
+    def get(self, key):
+        global FILE_INTERFACE
+        try:
+            item = FILE_INTERFACE.get_item(key, True)
+            return item, 200
+        except (KeyError, FileNotFoundError) as e:
+            logger.error(str(e))
+            abort(make_json_error(400, str(e)))
+        except Exception as e:
+            logger.error(str(e))
+            abort(make_json_error(500, str(e)))
 
     def delete(self, key):
         try:
             FILE_INTERFACE.remove_recorded_audio(key)
             return {'status': 'ok'}, 201
         except (KeyError, FileNotFoundError) as e:
-            logger.info(str(e))
+            logger.error(str(e))
             abort(make_json_error(400, str(e)))
         except Exception as e:
-            logger.info(str(e))
+            logger.error(str(e))
             abort(make_json_error(500, str(e)))
 
     @API.expect(RecordParams)
@@ -80,22 +109,11 @@ class RecordRead(Resource):
             FILE_INTERFACE.write_audio_buffer(key, BytesIO(bin_wav))
             return {'status': 'ok'}, 202
         except (ValueError, AssertionError) as e:
-            logger.info(str(e))
+            logger.error(str(e))
             abort(make_json_error(400, str(e)))
         except Exception as e:
-            logger.info(str(e))
+            logger.error(str(e))
             abort(make_json_error(500, str(e)))
-
-
-@record.route('/<string:key>/<string:type>')
-@API.response(404, 'key is not found')
-@API.response(500, 'internal server error')
-class WaveReader(Resource):
-
-    @API.response(200, 'audio/wav')
-    def get(self, key, type):
-        global FILE_INTERFACE
-        return None
 
 
 # main func

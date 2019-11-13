@@ -75,10 +75,10 @@ class FileInterface:
         key_list = self.get_type_list(type)
         # get number of pages
         nb_pages = len(key_list) // self.nb_pagination
-        assert idx > nb_pages, f'{idx} is cannot over than {nb_pages} !'
+        assert idx < nb_pages, f'{idx} is cannot over than {nb_pages} !'
 
         # slice page keys
-        page_keys = key_list[nb_pages * idx:nb_pages * (idx + 1)]
+        page_keys = key_list[self.nb_pagination * idx:self.nb_pagination * (idx + 1)]
 
         # get items
         page_items = [self.get_item(key, is_buffer=False) for key in page_keys]
@@ -92,6 +92,10 @@ class FileInterface:
         text = self.main_info['texts'][key]
         wave = self.main_info['waves'].get(key, '')
         recorded = self.main_info['recorded'].get(key, '')
+
+        # read text
+        with open(text, 'r') as r:
+            text = r.read().strip()
 
         if is_buffer:
             if wave:
@@ -167,7 +171,7 @@ class FileInterface:
         :return:
         """
         with open(wave_file_path, 'rb') as rb:
-            return rb.read()
+            return str(rb.read())
 
     def write_audio_buffer(self, key: str, wave_buffer: BytesIO):
         wave_file_path = os.path.join(self.recorded_dir, f'{key}.wav')

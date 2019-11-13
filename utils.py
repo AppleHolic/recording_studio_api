@@ -15,11 +15,9 @@ def make_wave_buf(wave_data, origin_sr: int, sr: int = 44100):
     return buf
 
 
-def get_res_headers(file_name: str = 'sound'):
-    return {
-        'Content-Type': 'audio/wav',
-        'Content-Disposition': f'attachment; filename={file_name}.wav'
-    }
+def set_res_headers(res, file_name: str = 'sound'):
+    res.headers['Content-Type'] = 'audio/wav'
+    res.headers['Content-Disposition'] = f'attachment; filename={file_name}.wav'
 
 
 def make_json_error(status_code: int, message: str) -> Dict[str, Any]:
