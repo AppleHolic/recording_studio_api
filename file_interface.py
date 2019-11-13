@@ -7,6 +7,11 @@ from io import BytesIO
 from typing import Dict
 from collections import deque
 
+from utils import get_logger
+
+
+logger = get_logger('main')
+
 
 class ListType(Enum):
 
@@ -25,17 +30,25 @@ class FileInterface:
         self.wave_dir = os.path.join(self.master_dir, 'waves')
         self.recorded_dir = os.path.join(self.master_dir, 'recorded')
 
+        # check and make dirs
+        os.makedirs(self.wave_dir, exist_ok=True)
+        os.makedirs(self.recorded_dir, exist_ok=True)
+
         # define file lists
         self.text_list = None
-        self.wave_listt = None
+        self.wave_list = None
         self.recorded_list = None
 
         # main dict
         self.main_info = {}
 
         # init
-        print('Initialize ...')
+        logger.info('Initialize ...')
         self.init_master_dir()
+        logger.info('--- File Info ---')
+        logger.info(f'{len(self.text_list)} Text Files')
+        logger.info(f'{len(self.wave_list)} Wave Files')
+        logger.info(f'{len(self.recorded_list)} Recorded Files')
         self.make_dict()
 
         # key list
@@ -153,7 +166,7 @@ class FileInterface:
         :param wave_file_path: wave file path
         :return:
         """
-        with open(wave_file_path , 'rb') as rb:
+        with open(wave_file_path, 'rb') as rb:
             return rb.read()
 
     def write_audio_buffer(self, key: str, wave_buffer: BytesIO):
@@ -166,6 +179,9 @@ class FileInterface:
         if key in self.other_key_deque:
             self.other_key_deque.remove(key)
             self.recorded_key_deque.appendleft(key)
+
+    def remove_recorded_audio(self, key: str):
+        os.remove(self.main_info['recorded'][key])
 
     @staticmethod
     def read_text(text_file_path: str) -> str:

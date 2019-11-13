@@ -1,6 +1,7 @@
 import io
 import librosa
 import soundfile
+import logging
 from typing import Dict, Any
 from flask import jsonify
 
@@ -28,3 +29,20 @@ def make_json_error(status_code: int, message: str) -> Dict[str, Any]:
     })
     res.status_code = status_code
     return res
+
+
+def get_logger(name: str):
+    """
+    Get formatted logger instance
+    :param name: logger's name
+    :return: instance of logger
+    """
+    # setup logger
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    return logger
