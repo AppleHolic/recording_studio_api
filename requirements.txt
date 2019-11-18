@@ -1,4 +1,5 @@
 natsort
 flask
 flask_restplus
+flask_cors
 fire

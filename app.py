@@ -3,15 +3,14 @@ import logging
 from io import BytesIO
 from flask import Flask
 from flask_restplus import Api, Resource, abort
-
-#
-# default app setup
-#
+from flask_cors import CORS
 from file_interface import FileInterface
 from settings import MASTER_DIR
 from utils import make_json_error, get_logger
 
-
+#
+# default app setup
+#
 APP = None
 API = None
 FILE_INTERFACE = None
@@ -22,6 +21,7 @@ def setup():
     global APP, API, FILE_INTERFACE
 
     APP = Flask(__name__)
+    cors = CORS(APP)
     # cors config
     APP.config['CORS_HEADERS'] = 'Content-Type'
 
@@ -69,6 +69,22 @@ class RecordPage(Resource):
             info_list = list(FILE_INTERFACE.get_page(page, list_type))
             return {'info': info_list}, 200
         except (KeyError, FileNotFoundError) as e:
+            logger.error(str(e))
+            abort(make_json_error(400, str(e)))
+        except Exception as e:
+            logger.error(str(e))
+            abort(make_json_error(500, str(e)))
+
+
+@record.route('/page-numbers/<string:list_type>')
+class NumberRecordPages(Resource):
+
+    def get(self, list_type):
+        global FILE_INTERFACE
+        try:
+            nb_pages = FILE_INTERFACE.get_nb_pages(list_type)
+            return {'nb_pages': nb_pages}, 200
+        except KeyError as e:
             logger.error(str(e))
             abort(make_json_error(400, str(e)))
         except Exception as e:
