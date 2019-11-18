@@ -10,3 +10,5 @@
 2. Make interface for prototyping in cases that are voice to voice, X to voice.
 
 It's under development.
+
+- Related repository : https://github.com/AppleHolic/recording_studio_web

@@ -11,6 +11,7 @@ from file_interface import FileInterface
 from settings import MASTER_DIR
 from utils import make_json_error, get_logger
 
+
 APP = None
 API = None
 FILE_INTERFACE = None
