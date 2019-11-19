@@ -1,7 +1,8 @@
 import glob
 import os
-from enum import Enum
+import numpy as np
 
+from enum import Enum
 from natsort import natsorted
 from io import BytesIO
 from typing import Dict
@@ -85,7 +86,7 @@ class FileInterface:
         return page_items
 
     def get_nb_pages(self, type: str):
-        return len(self.get_type_list(type))
+        return np.ceil(len(self.get_type_list(type)) / self.nb_pagination)
 
     def get_item(self, key: str, is_buffer: bool = False) -> Dict[str, str]:
         # parse item
