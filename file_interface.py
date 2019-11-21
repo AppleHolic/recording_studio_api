@@ -59,7 +59,7 @@ class FileInterface:
         # store splitted keys
         self.other_key_deque, self.recorded_key_deque = self.get_splitted_keys()
 
-    def get_type_list(self, type: str):
+    def get_type_list(self, type: str, blind_files: bool = False):
         type = ListType[type.upper()]
         if type == ListType.ALL:
             key_list = self.key_list
@@ -69,11 +69,13 @@ class FileInterface:
             key_list = self.other_key_deque
         else:
             key_list = []
+        if blind_files:
+            key_list = [{'key': info['key'], 'text': info['text'], 'wave': '', 'recorded': ''} for info in key_list]
         return key_list
 
     def get_page(self, idx: int, type: str):
         # get key list
-        key_list = self.get_type_list(type)
+        key_list = self.get_type_list(type, blind_files=False)
         # get number of pages
         nb_pages = len(key_list) // self.nb_pagination
         assert idx < nb_pages, f'{idx} is cannot over than {nb_pages} !'

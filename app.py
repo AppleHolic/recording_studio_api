@@ -1,8 +1,10 @@
 import fire
 import logging
 from io import BytesIO
+
+import werkzeug
 from flask import Flask
-from flask_restplus import Api, Resource, abort
+from flask_restplus import Api, Resource, abort, reqparse
 from flask_cors import CORS
 from file_interface import FileInterface
 from settings import MASTER_DIR
@@ -39,10 +41,6 @@ setup()
 #
 record = API.namespace('v1/record', description='Recording API')
 
-RecordParams = API.parser()
-RecordParams.add_argument('key', type=str, required=True)
-RecordParams.add_argument('file', type=str, required=True)
-
 
 @record.route('/list/<string:list_type>')
 class RecordList(Resource):
@@ -50,7 +48,7 @@ class RecordList(Resource):
     def get(self, list_type):
         global FILE_INTERFACE
         try:
-            info_list = list(FILE_INTERFACE.get_type_list(list_type))
+            info_list = list(FILE_INTERFACE.get_type_list(list_type, blind_files=True))
             return {'info': info_list}, 200
         except (KeyError, FileNotFoundError) as e:
             logger.error(str(e))
@@ -118,11 +116,12 @@ class RecordItem(Resource):
             logger.error(str(e))
             abort(make_json_error(500, str(e)))
 
-    @API.expect(RecordParams)
-    def update(self, key):
+    def post(self, key):
         try:
-            args = RecordParams.parse_args()
-            bin_wav = args['file']
+            parse = reqparse.RequestParser()
+            parse.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
+            args = parse.parse_args()
+            bin_wav = args['file'].stream
             FILE_INTERFACE.write_audio_buffer(key, BytesIO(bin_wav))
             return {'status': 'ok'}, 202
         except (ValueError, AssertionError) as e:
