@@ -1,5 +1,7 @@
 import glob
 import os
+
+import librosa
 import numpy as np
 
 from enum import Enum
@@ -100,13 +102,6 @@ class FileInterface:
         with open(text, 'r') as r:
             text = r.read().strip()
 
-        if is_buffer:
-            if wave:
-                wave = self.read_audio_buffer(wave)
-
-            if recorded:
-                recorded = self.read_audio_buffer(recorded)
-
         return {
             'key': key,
             'text': text,
@@ -166,15 +161,11 @@ class FileInterface:
         filename = os.path.basename(file_path).split('.')[0]
         return filename
 
-    @staticmethod
-    def read_audio_buffer(wave_file_path: str) -> bytes:
-        """
-        It returns binary information of wave file
-        :param wave_file_path: wave file path
-        :return:
-        """
-        with open(wave_file_path, 'rb') as rb:
-            return str(rb.read())
+    def read_audio(self, audio_type: str, key: str) -> bytes:
+        item = self.get_item(key)
+        file_path = item[audio_type]
+
+        return librosa.load(file_path, sr=None)
 
     def write_audio_buffer(self, key: str, wave_buffer: BytesIO):
         wave_file_path = os.path.join(self.recorded_dir, f'{key}.wav')

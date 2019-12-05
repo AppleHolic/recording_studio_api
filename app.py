@@ -3,12 +3,12 @@ import logging
 from io import BytesIO
 
 import werkzeug
-from flask import Flask
+from flask import Flask, make_response, request
 from flask_restplus import Api, Resource, abort, reqparse
 from flask_cors import CORS
 from file_interface import FileInterface
 from settings import MASTER_DIR
-from utils import make_json_error, get_logger
+from utils import make_json_error, get_logger, make_wave_buf, set_res_headers
 
 #
 # default app setup
@@ -90,6 +90,25 @@ class NumberRecordPages(Resource):
             abort(make_json_error(500, str(e)))
 
 
+@record.route('/audio/<string:audio_type>/<string:key>')
+class AudioItem(Resource):
+
+    @API.response(200, "audio/wav")
+    def get(self, audio_type, key):
+        global FILE_INTERFACE
+        try:
+            audio_buf = make_wave_buf(*FILE_INTERFACE.read_audio(audio_type, key))
+            response = make_response(audio_buf.getvalue())
+            set_res_headers(response)
+            return response
+        except KeyError as e:
+            logger.error(str(e))
+            abort(make_json_error(400, str(e)))
+        except Exception as e:
+            logger.error(str(e))
+            abort(make_json_error(500, str(e)))
+
+
 @record.route('/item/<string:key>')
 class RecordItem(Resource):
 
@@ -118,11 +137,8 @@ class RecordItem(Resource):
 
     def post(self, key):
         try:
-            parse = reqparse.RequestParser()
-            parse.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
-            args = parse.parse_args()
-            bin_wav = args['file'].stream
-            FILE_INTERFACE.write_audio_buffer(key, BytesIO(bin_wav))
+            bin_wav = request.files['file']
+            FILE_INTERFACE.write_audio_buffer(key, BytesIO(bin_wav.read()))
             return {'status': 'ok'}, 202
         except (ValueError, AssertionError) as e:
             logger.error(str(e))
