@@ -10,3 +10,11 @@
 2. Make interface for prototyping in cases that are voice to voice, X to voice.
 
 It's under development.
+
+## Initial Functions
+
+- API supports upload, download, listup, pagination
+- Preprocess sources for generalization structure of directory
+  - KSS Dataset ( provided by @Kyubyong )
+    - https://www.kaggle.com/bryanpark/korean-single-speaker-speech-dataset
+  - LJSpeech ( ongoing )
