@@ -1,7 +1,10 @@
 import glob
 import os
-from enum import Enum
 
+import librosa
+import numpy as np
+
+from enum import Enum
 from natsort import natsorted
 from io import BytesIO
 from typing import Dict
@@ -58,7 +61,7 @@ class FileInterface:
         # store splitted keys
         self.other_key_deque, self.recorded_key_deque = self.get_splitted_keys()
 
-    def get_type_list(self, type: str):
+    def get_type_list(self, type: str, blind_files: bool = False):
         type = ListType[type.upper()]
         if type == ListType.ALL:
             key_list = self.key_list
@@ -68,11 +71,13 @@ class FileInterface:
             key_list = self.other_key_deque
         else:
             key_list = []
+        if blind_files:
+            key_list = [{'key': info['key'], 'text': info['text'], 'wave': '', 'recorded': ''} for info in key_list]
         return key_list
 
     def get_page(self, idx: int, type: str):
         # get key list
-        key_list = self.get_type_list(type)
+        key_list = self.get_type_list(type, blind_files=False)
         # get number of pages
         nb_pages = len(key_list) // self.nb_pagination
         assert idx < nb_pages, f'{idx} is cannot over than {nb_pages} !'
@@ -85,7 +90,7 @@ class FileInterface:
         return page_items
 
     def get_nb_pages(self, type: str):
-        return len(self.get_type_list(type))
+        return np.ceil(len(self.get_type_list(type)) / self.nb_pagination)
 
     def get_item(self, key: str, is_buffer: bool = False) -> Dict[str, str]:
         # parse item
@@ -96,13 +101,6 @@ class FileInterface:
         # read text
         with open(text, 'r') as r:
             text = r.read().strip()
-
-        if is_buffer:
-            if wave:
-                wave = self.read_audio_buffer(wave)
-
-            if recorded:
-                recorded = self.read_audio_buffer(recorded)
 
         return {
             'key': key,
@@ -163,15 +161,11 @@ class FileInterface:
         filename = os.path.basename(file_path).split('.')[0]
         return filename
 
-    @staticmethod
-    def read_audio_buffer(wave_file_path: str) -> bytes:
-        """
-        It returns binary information of wave file
-        :param wave_file_path: wave file path
-        :return:
-        """
-        with open(wave_file_path, 'rb') as rb:
-            return str(rb.read())
+    def read_audio(self, audio_type: str, key: str) -> bytes:
+        item = self.get_item(key)
+        file_path = item[audio_type]
+
+        return librosa.load(file_path, sr=None)
 
     def write_audio_buffer(self, key: str, wave_buffer: BytesIO):
         wave_file_path = os.path.join(self.recorded_dir, f'{key}.wav')

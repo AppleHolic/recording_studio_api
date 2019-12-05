@@ -1,17 +1,18 @@
 import fire
 import logging
 from io import BytesIO
-from flask import Flask
-from flask_restplus import Api, Resource, abort
+
+import werkzeug
+from flask import Flask, make_response, request
+from flask_restplus import Api, Resource, abort, reqparse
+from flask_cors import CORS
+from file_interface import FileInterface
+from settings import MASTER_DIR
+from utils import make_json_error, get_logger, make_wave_buf, set_res_headers
 
 #
 # default app setup
 #
-from file_interface import FileInterface
-from settings import MASTER_DIR
-from utils import make_json_error, get_logger
-
-
 APP = None
 API = None
 FILE_INTERFACE = None
@@ -22,6 +23,7 @@ def setup():
     global APP, API, FILE_INTERFACE
 
     APP = Flask(__name__)
+    cors = CORS(APP)
     # cors config
     APP.config['CORS_HEADERS'] = 'Content-Type'
 
@@ -39,10 +41,6 @@ setup()
 #
 record = API.namespace('v1/record', description='Recording API')
 
-RecordParams = API.parser()
-RecordParams.add_argument('key', type=str, required=True)
-RecordParams.add_argument('file', type=str, required=True)
-
 
 @record.route('/list/<string:list_type>')
 class RecordList(Resource):
@@ -50,7 +48,7 @@ class RecordList(Resource):
     def get(self, list_type):
         global FILE_INTERFACE
         try:
-            info_list = list(FILE_INTERFACE.get_type_list(list_type))
+            info_list = list(FILE_INTERFACE.get_type_list(list_type, blind_files=True))
             return {'info': info_list}, 200
         except (KeyError, FileNotFoundError) as e:
             logger.error(str(e))
@@ -69,6 +67,41 @@ class RecordPage(Resource):
             info_list = list(FILE_INTERFACE.get_page(page, list_type))
             return {'info': info_list}, 200
         except (KeyError, FileNotFoundError) as e:
+            logger.error(str(e))
+            abort(make_json_error(400, str(e)))
+        except Exception as e:
+            logger.error(str(e))
+            abort(make_json_error(500, str(e)))
+
+
+@record.route('/page-numbers/<string:list_type>')
+class NumberRecordPages(Resource):
+
+    def get(self, list_type):
+        global FILE_INTERFACE
+        try:
+            nb_pages = FILE_INTERFACE.get_nb_pages(list_type)
+            return {'nb_pages': nb_pages}, 200
+        except KeyError as e:
+            logger.error(str(e))
+            abort(make_json_error(400, str(e)))
+        except Exception as e:
+            logger.error(str(e))
+            abort(make_json_error(500, str(e)))
+
+
+@record.route('/audio/<string:audio_type>/<string:key>')
+class AudioItem(Resource):
+
+    @API.response(200, "audio/wav")
+    def get(self, audio_type, key):
+        global FILE_INTERFACE
+        try:
+            audio_buf = make_wave_buf(*FILE_INTERFACE.read_audio(audio_type, key))
+            response = make_response(audio_buf.getvalue())
+            set_res_headers(response)
+            return response
+        except KeyError as e:
             logger.error(str(e))
             abort(make_json_error(400, str(e)))
         except Exception as e:
@@ -102,12 +135,10 @@ class RecordItem(Resource):
             logger.error(str(e))
             abort(make_json_error(500, str(e)))
 
-    @API.expect(RecordParams)
-    def update(self, key):
+    def post(self, key):
         try:
-            args = RecordParams.parse_args()
-            bin_wav = args['file']
-            FILE_INTERFACE.write_audio_buffer(key, BytesIO(bin_wav))
+            bin_wav = request.files['file']
+            FILE_INTERFACE.write_audio_buffer(key, BytesIO(bin_wav.read()))
             return {'status': 'ok'}, 202
         except (ValueError, AssertionError) as e:
             logger.error(str(e))
